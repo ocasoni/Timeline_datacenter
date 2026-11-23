@@ -11355,7 +11355,7 @@ window.TIMELINE_DATA = {
       },
       {
         "id": "imagination-2015",
-        "title": "Undersea Cables — Trevor Paglen",
+        "title": "Undersea Cables, Trevor Paglen",
         "texts": [
           "2015  |  Oceano Atlantico \nPaglen si immerge per osservare e fotografare i cavi delle comunicazioni transoceaniche. Porta lo sguardo dalla metafora della nuvola al fondo del mare."
         ],
@@ -11371,7 +11371,13 @@ window.TIMELINE_DATA = {
         "x": 3172.0,
         "y": -650,
         "row": 0,
-        "z": -1120
+        "z": -1120,
+        "links": [
+          {
+            "label": "Trevor Paglen's Deep Web Dive | Behind the Scenes",
+            "href": "https://www.youtube.com/watch?v=h7guR5ei30Y&t=1s"
+          }
+        ]
       },
       {
         "id": "imagination-2014",
@@ -11391,7 +11397,13 @@ window.TIMELINE_DATA = {
         "x": 3118.4,
         "y": -650,
         "row": 3,
-        "z": -1780
+        "z": -1780,
+        "links": [
+          {
+            "label": "Internet Machine — Timo Arnall (Vimeo)",
+            "href": "https://vimeo.com/95044197"
+          }
+        ]
       }
     ],
     "imageCount": 10,
