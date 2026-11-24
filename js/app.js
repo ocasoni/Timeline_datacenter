@@ -11,18 +11,62 @@ DATA.events.forEach((e,i)=>{e.index=i;e.category=e.category||categories[e.y<547?
 const ordered=[...DATA.events].sort((a,b)=>a.x-b.x||a.y-b.y);
 function loadImage(src){return new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>reject(new Error('Impossibile leggere una delle immagini incorporate.'));im.src=src})}
 function resize(){width=innerWidth;height=innerHeight;const dpr=Math.min(devicePixelRatio||1,2);canvas.width=width*dpr;canvas.height=height*dpr;foregroundCanvas.width=width*dpr;foregroundCanvas.height=height*dpr;baseCtx.setTransform(dpr,0,0,dpr,0,0);foregroundCtx.setTransform(dpr,0,0,dpr,0,0);fit();dirty=true}
-function project(x,y,z=0){x-=2081;y=DATA.sceneHeight/2-y;const ca=Math.cos(camera.angle),sa=Math.sin(camera.angle),se=Math.sin(camera.elevation),ce=Math.cos(camera.elevation);const u=ca*x-sa*y,v=sa*x+ca*y;return {x:width/2+camera.panX+u*scale,y:height*.55+camera.panY+(-se*v-ce*(z-DATA.datacenters.z/2))*scale,depth:ce*v-se*z}}
+function project(x,y,z=0){x-=2081;y=DATA.sceneHeight/2-y;const ca=Math.cos(camera.angle),sa=Math.sin(camera.angle),se=Math.sin(camera.elevation),ce=Math.cos(camera.elevation);const u=ca*x-sa*y,v=sa*x+ca*y;return {x:width/2+camera.panX+u*scale,y:height*.55+camera.panY+(-se*v-ce*(z-DATA.datacenters.z/2))*scale,depth:ce*v-se*z,worldZ:z}}
 function fit(){
  // Frame once against the default orientation: rotation must never change scale.
  const angle=Math.PI/6,elevation=Math.PI/7.5,ca=Math.cos(angle),sa=Math.sin(angle);
- const bw=ca*4450+sa*(DATA.sceneHeight+166),bh=Math.sin(elevation)*(sa*4450+ca*(DATA.sceneHeight+166))+Math.cos(elevation)*(450-DATA.datacenters.z);
+ // Include the fixed caption column when framing the full scene.
+ const bw=ca*(isPlanView()?4450:7500)+sa*(DATA.sceneHeight+166),bh=Math.sin(elevation)*(sa*4450+ca*(DATA.sceneHeight+166))+Math.cos(elevation)*(450-DATA.datacenters.z);
  scale=Math.max(.025,Math.min((width-70)/bw,(height-165)/bh))*camera.zoom;
 }
 let wallOccluders=[],captureWallOccluders=false;
 function recordWallOccluder(points){if(captureWallOccluders&&points.length>2&&points.every(p=>Number.isFinite(p.depth)))wallOccluders.push(points)}
 function path(points,stroke,fill,lineWidth=1){if(fill)recordWallOccluder(points);ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));if(points.length>2)ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lineWidth;ctx.stroke()}}
-function texture(im,a,b,d){recordWallOccluder([a,b,{x:b.x+d.x-a.x,y:b.y+d.y-a.y,depth:b.depth+d.depth-a.depth},d]);ctx.save();ctx.transform((b.x-a.x)/im.width,(b.y-a.y)/im.width,(d.x-a.x)/im.height,(d.y-a.y)/im.height,a.x,a.y);ctx.drawImage(im,0,0);ctx.restore()}
-function groundLabel(label){ctx.save();ctx.font=`${label.weight} ${label.size}px Inter`;const y=label.bandFrom!==undefined?(label.bandFrom+label.bandTo)/2+ctx.measureText(label.text).width/2:label.y;const theta=label.rotation*Math.PI/180,cs=Math.cos(theta),sn=Math.sin(theta),a=project(label.x,y,label.z||0),b=project(label.x+cs,y+sn,label.z||0),d=project(label.x-sn,y+cs,label.z||0);ctx.transform(b.x-a.x,b.y-a.y,d.x-a.x,d.y-a.y,a.x,a.y);ctx.fillStyle=label.color||'#ffffff';ctx.textAlign=label.align||'left';ctx.fillText(label.text,0,0);ctx.restore()}
+function texture(im,a,b,d){recordWallOccluder([a,b,{x:b.x+d.x-a.x,y:b.y+d.y-a.y,depth:b.depth+d.depth-a.depth,worldZ:a.worldZ===b.worldZ&&a.worldZ===d.worldZ?a.worldZ:undefined},d]);ctx.save();ctx.transform((b.x-a.x)/im.width,(b.y-a.y)/im.width,(d.x-a.x)/im.height,(d.y-a.y)/im.height,a.x,a.y);ctx.drawImage(im,0,0);ctx.restore()}
+let layerTextQueue=[],layerTextLayout=[];
+function isPlanView(){return Math.abs(camera.elevation-Math.PI/2)<1e-6}
+function groundLabel(label){
+ if(!isPlanView()){layerTextQueue.push({lines:[label],anchor:label});return}
+ ctx.save();ctx.font=`${label.weight} ${label.size}px Inter`;
+ const y=label.bandFrom!==undefined?(label.bandFrom+label.bandTo)/2+ctx.measureText(label.text).width/2:label.y;
+ const theta=label.rotation*Math.PI/180,cs=Math.cos(theta),sn=Math.sin(theta),a=project(label.x,y,label.z||0),b=project(label.x+cs,y+sn,label.z||0),d=project(label.x-sn,y+cs,label.z||0);
+ ctx.transform(b.x-a.x,b.y-a.y,d.x-a.x,d.y-a.y,a.x,a.y);ctx.fillStyle=label.color||'#ffffff';ctx.textAlign=label.align||'left';ctx.fillText(label.text,0,0);ctx.restore();
+}
+function layerTextBlock(lines,anchor){
+ if(isPlanView()){for(const line of lines)groundLabel(line);return}
+ layerTextQueue.push({lines:lines.flatMap(l=>l.frontLines?l.frontLines.map(text=>({...l,text})):l),anchor,block:true});
+}
+function renderLayerText(){
+ layerTextLayout=[];
+ if(isPlanView())return;
+ for(const item of layerTextQueue){
+  const {lines,anchor}=item;ctx.save();
+  const rows=lines.map(l=>{const size=l.frontSize||l.size;ctx.font=`${l.weight} ${size}px Inter`;return {...l,size,w:ctx.measureText(l.text).width*scale,h:size*(anchor.lineHeight||1.3)*scale}});
+  const swatch=anchor.swatch?75*scale:0,w=Math.max(...rows.map(l=>l.w))+swatch,h=rows.reduce((sum,l)=>sum+l.h,0);
+  // A fixed world-space pivot, independent of camera, other labels and viewport.
+  let worldAnchor;
+  if(item.block){
+   const y=anchor.bandFrom!==undefined?(anchor.bandFrom+anchor.bandTo)/2:anchor.y;
+   worldAnchor={x:anchor.x,y,z:anchor.z||0};
+  }else{
+   ctx.font=`${anchor.weight} ${anchor.size}px Inter`;ctx.textAlign=anchor.align||'left';
+   const m=ctx.measureText(anchor.text),cx=(m.actualBoundingBoxRight-m.actualBoundingBoxLeft)/2,cy=(m.actualBoundingBoxDescent-m.actualBoundingBoxAscent)/2;
+   const y=anchor.bandFrom!==undefined?(anchor.bandFrom+anchor.bandTo)/2+m.width/2:anchor.y,t=anchor.rotation*Math.PI/180;
+   worldAnchor={x:anchor.x+Math.cos(t)*cx-Math.sin(t)*cy,y:y+Math.sin(t)*cx+Math.cos(t)*cy,z:anchor.z||0};
+  }
+  const target=project(worldAnchor.x,worldAnchor.y,worldAnchor.z);
+  const box={x:target.x-w/2,y:target.y-h/2,w,h};
+  layerTextLayout.push({...box,texts:lines.map(l=>l.text),anchor:target,worldAnchor,swatch:anchor.swatch||null});
+  // Billboards obey scene depth; exclude only their own supporting plane.
+  const inkPadding=Math.max(4,24*scale);
+  const occluders=nearerWallPolygons(target,{left:box.x-inkPadding,top:box.y-inkPadding,right:box.x+w+inkPadding,bottom:box.y+h+inkPadding},worldAnchor.z);
+  for(const polygon of occluders){ctx.beginPath();ctx.rect(0,0,width,height);polygon.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.clip('evenodd')}
+  let y=box.y;ctx.textAlign='left';ctx.textBaseline='middle';
+  if(anchor.swatch){ctx.fillStyle=anchor.swatch;ctx.fillRect(box.x,box.y+(h-48*scale)/2,48*scale,48*scale)}
+  for(const row of rows){ctx.font=`${row.weight} ${row.size*scale}px Inter`;ctx.fillStyle=row.color||(anchor.captionColor||'#ffffff');ctx.fillText(row.text,anchor.centerLines?box.x+swatch+(w-swatch-row.w)/2:box.x+swatch,y+row.h/2);y+=row.h}
+  ctx.restore();
+ }
+}
 // Direct links determine red outlines; connected components determine arrow navigation.
 let activeCrossLayerNavigation=null;
 function crossLayerCards(wire){const first=DATA.events.find(e=>e.id===wire.source);const second=wire.targetLayer===2?co2DataCard:wire.targetLayer===5?mapCard():datacenterCard(DATA.datacenters.towns.find(t=>t.code===wire.town));return [first,second]}
@@ -83,8 +127,7 @@ function renderEnergyGraph(){
  const graph=DATA.energy,z=graph.z;
  for(let i=0;i<=5;i++){const value=i*100,y=graph.bottom+(graph.top-graph.bottom)*i/5;path([project(140,y,z),project(4100,y,z)],'#4ebbff22',null,.6);groundLabel({text:String(value),x:118,y:y+13,z,rotation:0,size:36,weight:'500',align:'right',color:graph.color})}
  for(const year of graph.yearLabels){path([project(year.x,250,z),project(year.x,2230,z)],'#4ebbff18',null,.6);groundLabel({...year,z})}
- groundLabel({text:'Consumo di elettricità dei data center',x:-420,y:0,z,rotation:-90,size:44,weight:'800',bandFrom:250,bandTo:2230,color:graph.color});
- groundLabel({text:'(TWH/anno) - globale',x:-360,y:0,z,rotation:-90,size:44,weight:'800',bandFrom:250,bandTo:2230,color:graph.color});
+ layerTextBlock([{text:'Consumo di elettricità dei data center',x:-420,y:0,z,rotation:-90,size:44,weight:'800',bandFrom:250,bandTo:2230,color:graph.color},{text:'(TWH/anno) - globale',x:-360,y:0,z,rotation:-90,size:44,weight:'800',bandFrom:250,bandTo:2230,color:graph.color}],{x:-250,y:0,z:z+130,rotation:0,centerLines:true,lineHeight:1.05});
  ctx.beginPath();for(const vertex of graph.segments){const p=project(vertex.x,vertex.y,z);if(vertex.move)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y)}ctx.strokeStyle=graph.color;ctx.lineWidth=Math.max(1.2,5*scale);ctx.stroke();
  for(const [i,marker] of graph.markers.entries()){const p=project(marker.x,marker.y,z);energyMarker(p,marker.kind,Math.max(2,10*scale));hits.push({e:energySourceCard,p,r:10});if(i){const previous=graph.markers[i-1];hits.push({e:energySourceCard,a:project(previous.x,previous.y,z),b:p,r:9})}}
  for(const label of graph.values)groundLabel({...label,z,rotation:0,size:34,weight:'800',color:graph.color});
@@ -97,8 +140,7 @@ function renderPopulationGraph(){
  const graph=DATA.population,z=graph.z;
  for(let value=0;value<=8;value++){const y=graph.bottom+(graph.top-graph.bottom)*value/8;path([project(140,y,z),project(4100,y,z)],'#8aa6ff22',null,.6);groundLabel({text:String(value),x:118,y:y+13,z,rotation:0,size:36,weight:'500',align:'right',color:graph.color})}
  for(const year of graph.yearLabels){path([project(year.x,250,z),project(year.x,2230,z)],'#8aa6ff18',null,.6);groundLabel({...year,z})}
- groundLabel({text:'Popolazione mondiale',x:-690,y:0,z,rotation:-90,size:44,weight:'800',bandFrom:250,bandTo:2230,color:graph.color});
- groundLabel({text:'(Miliardi di persone)',x:-630,y:0,z,rotation:-90,size:44,weight:'800',bandFrom:250,bandTo:2230,color:graph.color});
+ layerTextBlock([{text:'Popolazione mondiale',x:-690,y:0,z,rotation:-90,size:44,weight:'800',bandFrom:250,bandTo:2230,color:graph.color},{text:'(Miliardi di persone)',x:-630,y:0,z,rotation:-90,size:44,weight:'800',bandFrom:250,bandTo:2230,color:graph.color}],{x:-250,y:0,z:z+90,rotation:0,centerLines:true,lineHeight:1.05});
  ctx.beginPath();graph.points.forEach((v,i)=>{const p=project(v.x,v.y,z);if(i)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y)});ctx.strokeStyle=graph.color;ctx.lineWidth=Math.max(1.2,5*scale);ctx.stroke();
  for(let i=1;i<graph.points.length;i++){const a=graph.points[i-1],b=graph.points[i];hits.push({e:populationSourceCard,a:project(a.x,a.y,z),b:project(b.x,b.y,z),r:9})}
  for(const marker of graph.markers){const p=project(marker.x,marker.y,z);energyMarker(p,'circle',Math.max(2,10*scale),graph.color);hits.push({e:populationSourceCard,p,r:10})}
@@ -107,10 +149,9 @@ function renderPopulationGraph(){
 function renderCo2(){
  const z=DATA.co2.z,corners=[[0,0],[4162,0],[4162,DATA.sceneHeight],[0,DATA.sceneHeight]].map(p=>project(p[0],p[1],z));
  path(corners,'#ffffff30',planeFill());
- for(const tick of DATA.co2.ticks){path([project(140,tick.y,z),project(4100,tick.y,z)],'#ffffff22',null,.7);groundLabel({text:tick.text,x:118,y:tick.y+13,z,rotation:0,size:38,weight:'500',align:'right'})}
+ for(const tick of DATA.co2.ticks){path([project(140,tick.y,z),project(4100,tick.y,z)],'#ffffff22',null,.7);groundLabel({text:tick.text,x:118,y:tick.y+13,z,rotation:0,size:38,weight:'500',align:'right',color:DATA.co2.color})}
  for(const year of DATA.co2.yearLabels){path([project(year.x,250,z),project(year.x,2230,z)],'#ffffff20',null,.7);groundLabel({...year,z})}
- groundLabel({text:'Quantità di anidride carbonica',x:-150,y:0,z,rotation:-90,size:44,weight:'800',bandFrom:250,bandTo:2230});
- groundLabel({text:'(Parti per milione)  - golobale',x:-90,y:0,z,rotation:-90,size:44,weight:'800',bandFrom:250,bandTo:2230});
+ layerTextBlock([{text:'Quantità di anidride carbonica',x:-150,y:0,z,rotation:-90,size:44,weight:'800',bandFrom:250,bandTo:2230},{text:'(Parti per milione) - globale',x:-90,y:0,z,rotation:-90,size:44,weight:'800',bandFrom:250,bandTo:2230}],{x:-250,y:0,z:z+130,rotation:0,centerLines:true,lineHeight:1.05,captionColor:DATA.co2.color});
  for(const curve of [...DATA.co2.paths].sort((a,b)=>a.seasonal-b.seasonal)){ctx.beginPath();curve.points.forEach(([x,y],i)=>{const p=project(x,y,z);if(i)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y)});ctx.strokeStyle=DATA.co2.color;ctx.globalAlpha=curve.seasonal?1:.65;ctx.lineWidth=Math.max(curve.seasonal?1.1:1.5,(curve.seasonal?4:5)*scale);ctx.lineJoin='round';ctx.lineCap='round';ctx.stroke();ctx.globalAlpha=1}
 
  for(const curve of DATA.co2.paths)for(let i=1;i<curve.points.length;i++){const a=curve.points[i-1],b=curve.points[i];hits.push({e:co2DataCard,a:project(a[0],a[1],z),b:project(b[0],b[1],z),r:8})}
@@ -144,12 +185,14 @@ function renderDatacenterColumns(section){
 function mapCard(){const view=DATA.maps.views[activeMapView];return {id:'layer5-map',category:'Layer 5 · Cincia alpestre - Finlandia',title:'Nidificazione della cincia alpestre',subtitle:view.title.replace('ATLANTE ORNITOLOGICO ',''),image:view.portraitImage,links:DATA.maps.links,texts:[DATA.maps.description,...view.sources]}}
 function renderMapLayer(){
  const z=DATA.maps.z,view=DATA.maps.views[activeMapView];const corners=[[0,0],[4162,0],[4162,DATA.sceneHeight],[0,DATA.sceneHeight]].map(p=>project(p[0],p[1],z));path(corners,'#ffffff30',planeFill());
- groundLabel({text:'CINCIA ALPESTRE · FINLANDIA',x:220,y:145,z,rotation:0,size:60,weight:'700'});
- groundLabel({text:view.title,x:220,y:230,z,rotation:0,size:44,weight:'500'});
- groundLabel({text:'Parus montanus · celle 10 × 10 km',x:220,y:295,z,rotation:0,size:34,weight:'400'});
+ layerTextBlock([
+  {text:'Cincia alpestre · Finlandia',x:220,y:145,z,rotation:0,size:60,frontSize:44,weight:'700'},
+  {text:view.title.replace('ATLANTE ORNITOLOGICO','Atlante ornitologico'),x:220,y:230,z,rotation:0,size:44,weight:'500'},
+  {text:'Parus montanus · celle 10 × 10 km',x:220,y:295,z,rotation:0,size:34,frontSize:44,weight:'400'}
+ ],{x:125,y:0,z:z+180,rotation:0,centerLines:true,lineHeight:1.05});
  const mapRect=[[480,400],[3680,400],[3680,2232],[480,2232]].map(p=>project(p[0],p[1],z));texture(view.bitmap,mapRect[0],mapRect[1],mapRect[3]);
  path([project(3710,290,z),project(3880,290,z)],'#B7D2FF',null,1.1);path([project(3850,270,z),project(3880,290,z),project(3850,310,z)],'#B7D2FF',null,1.1);groundLabel({text:'N',x:3915,y:302,z,rotation:0,size:36,weight:'700'});
- const names=['Confermata','Probabile','Possibile'];for(let i=0;i<3;i++){const x=250+i*1050;path([[x,2310],[x+48,2310],[x+48,2358],[x,2358]].map(p=>project(p[0],p[1],z)),null,DATA.maps.colors[i]);groundLabel({text:names[i]+' · '+view.counts[i],x:x+75,y:2350,z,rotation:0,size:40,weight:'500'})}
+ const names=['Confermata','Probabile','Possibile'];for(let i=0;i<3;i++){const x=250+i*1050;if(isPlanView())path([[x,2310],[x+48,2310],[x+48,2358],[x,2358]].map(p=>project(p[0],p[1],z)),null,DATA.maps.colors[i]);groundLabel({text:names[i]+' · '+view.counts[i],x:x+75,y:2350,z,rotation:0,size:40,weight:'500',swatch:DATA.maps.colors[i]})}
  groundLabel({text:'Totale · '+view.counts[3]+' celle',x:3430,y:2350,z,rotation:0,size:38,weight:'500'});
  hits.push({e:mapCard(),poly:corners});
  ctx.setLineDash([3,8]);for(const [x,y] of [[0,0],[4162,0],[4162,DATA.sceneHeight],[0,DATA.sceneHeight]])path([project(x,y,DATA.population.z),project(x,y,z)],'#ffffff20',null,.8);ctx.setLineDash([]);
@@ -200,16 +243,17 @@ function renderMacroBlockTitles(){
  // A billboard extends to the left of a fixed layer corner, along the camera's horizontal axis.
  // Its world height matches the layer, so the title cannot drift vertically when rotating.
  const worldX=-distance*Math.cos(camera.angle),worldY=-distance*Math.sin(camera.angle);
- macroBlockTitleState=groups.map(group=>{const worldZ=group.z,point=project(worldX,worldY,worldZ),titleOffsetY=group.text==='Immaginario'?-300*scale:0;ctx.fillText(group.text,point.x,point.y+titleOffsetY);return {...group,worldX,worldY,worldZ,x:point.x,y:point.y+titleOffsetY,fontSize,opacity}});
+ macroBlockTitleState=groups.map(group=>{const worldZ=group.z,point=project(worldX,worldY,worldZ),titleOffsetY=group.text==='Immaginario'?-300*scale:group.text==='Dati e indicatori'?-450*scale:0;ctx.fillText(group.text,point.x,point.y+titleOffsetY);return {...group,worldX,worldY,worldZ,x:point.x,y:point.y+titleOffsetY,fontSize,opacity}});
  ctx.restore();
 }
 let imaginationWallState=[];
-function nearerWallPolygons(center,rect){
+function nearerWallPolygons(center,rect,supportZ){
  const result=[];
  for(const points of wallOccluders){
+  if(supportZ!==undefined&&points.every(p=>p.worldZ!==undefined&&Math.abs(p.worldZ-supportZ)<.001))continue;
   if(Math.max(...points.map(p=>p.x))<rect.left||Math.min(...points.map(p=>p.x))>rect.right||Math.max(...points.map(p=>p.y))<rect.top||Math.min(...points.map(p=>p.y))>rect.bottom)continue;
   const clipped=[];
-  for(let i=0;i<points.length;i++){const a=points[i],b=points[(i+1)%points.length],da=a.depth-center.depth,db=b.depth-center.depth;if(da<=0)clipped.push(a);if((da<=0)!==(db<=0)){const t=da/(da-db);clipped.push({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t})}}
+  for(let i=0;i<points.length;i++){const a=points[i],b=points[(i+1)%points.length],da=a.depth-center.depth,db=b.depth-center.depth;if(da<-.01)clipped.push(a);if((da<-.01)!==(db<-.01)){const t=da/(da-db);clipped.push({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t})}}
   if(clipped.length>2)result.push(clipped);
  }
  return result;
@@ -225,12 +269,18 @@ function renderImaginationWall(front=false){
   imaginationWallState.push({id:e.id,year:e.year,x:e.x,y:e.y,z:e.z,w:e.w,h:e.h,row:e.row,poly});
  }
 }
-function render(){if(!ready)return;ctx=baseCtx;foregroundCtx.clearRect(0,0,width,height);ctx.clearRect(0,0,width,height);ctx.fillStyle='#25262a';ctx.fillRect(0,0,width,height);hits=[];
+function render(){if(!ready)return;layerTextQueue=[];ctx=baseCtx;foregroundCtx.clearRect(0,0,width,height);ctx.clearRect(0,0,width,height);ctx.fillStyle='#25262a';ctx.fillRect(0,0,width,height);hits=[];
  // Draw the wall under transparent surfaces, then reveal only pixels closer to the camera.
  wallOccluders=[];captureWallOccluders=false;renderImaginationWall();captureWallOccluders=true;
  renderCrossLayerWires('behind');
- renderDatacenterFloor();renderDatacenterColumns('lower');renderMapLayer();renderDatacenterColumns('upper');groundLabel({text:'DATA CENTER CENSITI E IN PROGRAMMA IN FINLANDIA',x:220,y:2380,z:DATA.datacenters.z,rotation:0,size:60,weight:'700'});renderPopulationFloor();renderEnergyFloor();renderCo2();renderEnergyGraph();renderPopulationGraph();renderVolumes();
- const corners=[[0,0],[4162,0],[4162,DATA.sceneHeight],[0,DATA.sceneHeight]].map(p=>project(...p));path(corners,'#ffffff30',planeFill(.82));texture(DATA.groundImage,corners[0],corners[1],corners[3]);for(const label of DATA.groundLabels||[])groundLabel(label);
+ renderDatacenterFloor();renderDatacenterColumns('lower');renderMapLayer();renderDatacenterColumns('upper');layerTextBlock([{text:'Data center censiti e in programma in Finlandia',frontLines:['Data Center censiti e in','programma in Finlandia'],x:220,y:2380,z:DATA.datacenters.z,rotation:0,size:60,frontSize:44,weight:'700'}],{x:-280,y:0,z:DATA.datacenters.z+130,rotation:0,centerLines:true,lineHeight:1.05});renderPopulationFloor();renderEnergyFloor();renderCo2();renderEnergyGraph();renderPopulationGraph();renderVolumes();
+ const corners=[[0,0],[4162,0],[4162,DATA.sceneHeight],[0,DATA.sceneHeight]].map(p=>project(...p));path(corners,'#ffffff30',planeFill(.82));texture(DATA.groundImage,corners[0],corners[1],corners[3]);if(isPlanView()){for(const label of DATA.groundLabels||[])groundLabel(label)}else{
+ for(const label of DATA.groundLabels||[])if(label.bandFrom===undefined)groundLabel(label);
+ for(const title of (DATA.groundLabels||[]).filter(l=>l.bandFrom!==undefined&&l.weight==='800')){
+  const subtitle=DATA.groundLabels.find(l=>l.bandFrom===title.bandFrom&&l.weight!=='800');
+  layerTextBlock([title,...(subtitle?[subtitle]:[])],title);
+ }
+}
  captureWallOccluders=false;renderImaginationWall(true);ctx=foregroundCtx;
  const cards=DATA.events.map(billboard).sort((a,b)=>b.depth-a.depth),byId=new Map(cards.map(card=>[card.e.id,card]));
  const ribbonGeometry=[];
@@ -255,8 +305,12 @@ function render(){if(!ready)return;ctx=baseCtx;foregroundCtx.clearRect(0,0,width
  }}
  renderCrossLayerWires('front');
  renderMacroBlockTitles();
+ // The card faces are screen-facing planes at the depth of their anchors.
+ for(const card of cards)wallOccluders.push(card.poly.map(p=>({...p,depth:card.depth})));
+ for(const panel of imaginationWallState){const center=project(panel.x,panel.y,panel.z);wallOccluders.push(panel.poly.map(p=>({...p,depth:center.depth})))}
+ renderLayerText();
  ctx=baseCtx;
- window.timelineState={imaginaryWall:imaginationWallState,crossLayerNavigation:activeCrossLayerNavigation,macroBlockTitles:macroBlockTitleState,crossLayerWires:crossLayerWireState,overheadTransparency:overheadBlend(),planeOpacity:1+(.035-1)*overheadBlend(),co2Volume:co2VolumeState,energyVolume:energyVolumeState,populationVolume:populationVolumeState,layerCount:6,datacenterColumns:dcColumnState,layer6Z:DATA.datacenters.z,activeMapView:activeMapView+1,mapNorth:DATA.maps.north,layer5Z:DATA.maps.z,layer2Z:DATA.co2.z,layer3Z:DATA.energy.z,layer4Z:DATA.population.z,yearAlignment:DATA.co2.yearLabels.map(label=>({year:label.text,upper:project(label.x,label.y,0),lower:project(label.x,label.y,DATA.co2.z),energy:project(label.x,label.y,DATA.energy.z),population:project(label.x,label.y,DATA.population.z)})),events:DATA.events.length,photos:cards.filter(c=>c.e.image).length,labels:cards.filter(c=>!c.e.image).length,links:DATA.connections.length,ribbons:ribbonGeometry,scale,highlighted:DATA.events.filter(isHighlighted).map(e=>e.id),anchors,selected:selected?.id,camera:{...camera},hits};
+ window.timelineState={layerTextLayout,imaginaryWall:imaginationWallState,crossLayerNavigation:activeCrossLayerNavigation,macroBlockTitles:macroBlockTitleState,crossLayerWires:crossLayerWireState,overheadTransparency:overheadBlend(),planeOpacity:1+(.035-1)*overheadBlend(),co2Volume:co2VolumeState,energyVolume:energyVolumeState,populationVolume:populationVolumeState,layerCount:6,datacenterColumns:dcColumnState,layer6Z:DATA.datacenters.z,activeMapView:activeMapView+1,mapNorth:DATA.maps.north,layer5Z:DATA.maps.z,layer2Z:DATA.co2.z,layer3Z:DATA.energy.z,layer4Z:DATA.population.z,yearAlignment:DATA.co2.yearLabels.map(label=>({year:label.text,upper:project(label.x,label.y,0),lower:project(label.x,label.y,DATA.co2.z),energy:project(label.x,label.y,DATA.energy.z),population:project(label.x,label.y,DATA.population.z)})),events:DATA.events.length,photos:cards.filter(c=>c.e.image).length,labels:cards.filter(c=>!c.e.image).length,links:DATA.connections.length,ribbons:ribbonGeometry,scale,highlighted:DATA.events.filter(isHighlighted).map(e=>e.id),anchors,selected:selected?.id,camera:{...camera},hits};
 }
 function loop(){
  const now=Date.now(),dt=Math.max(1,Math.min(50,now-co2AnimationTime));co2AnimationTime=now;
