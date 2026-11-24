@@ -192,14 +192,15 @@ function renderCrossLayerWires(pass){
 }
 let macroBlockTitleState=[];
 function renderMacroBlockTitles(){
- const groups=[{text:'Eventi',z:0},{text:'Dati e indicatori',z:(DATA.co2.z+DATA.energy.z+DATA.population.z)/3},{text:'Non-humans',z:(DATA.maps.z+DATA.datacenters.z)/2}];
+ const imaginationZ=DATA.imaginary.events.reduce((sum,event)=>sum+event.z,0)/DATA.imaginary.events.length;
+ const groups=[{text:'Eventi',z:0},{text:'Immaginario',z:imaginationZ},{text:'Dati e indicatori',z:(DATA.co2.z+DATA.energy.z+DATA.population.z)/3},{text:'Non - Humans',z:(DATA.maps.z+DATA.datacenters.z)/2}];
  const opacity=1-overheadBlend(),fontSize=Math.min(52,Math.max(20,220*scale));
  ctx.save();ctx.font=`600 ${fontSize}px Inter`;ctx.textAlign='left';ctx.textBaseline='middle';ctx.globalAlpha=opacity;ctx.fillStyle='#999DA7';ctx.shadowColor='#17181bcc';ctx.shadowBlur=7;ctx.shadowOffsetY=1;
  const labelWidth=Math.max(...groups.map(g=>ctx.measureText(g.text).width)),distance=labelWidth/scale+600;
  // A billboard extends to the left of a fixed layer corner, along the camera's horizontal axis.
  // Its world height matches the layer, so the title cannot drift vertically when rotating.
  const worldX=-distance*Math.cos(camera.angle),worldY=-distance*Math.sin(camera.angle);
- macroBlockTitleState=groups.map(group=>{const worldZ=group.z,point=project(worldX,worldY,worldZ);ctx.fillText(group.text,point.x,point.y);return {...group,worldX,worldY,worldZ,x:point.x,y:point.y,fontSize,opacity}});
+ macroBlockTitleState=groups.map(group=>{const worldZ=group.z,point=project(worldX,worldY,worldZ),titleOffsetY=group.text==='Immaginario'?-300*scale:0;ctx.fillText(group.text,point.x,point.y+titleOffsetY);return {...group,worldX,worldY,worldZ,x:point.x,y:point.y+titleOffsetY,fontSize,opacity}});
  ctx.restore();
 }
 let imaginationWallState=[];
