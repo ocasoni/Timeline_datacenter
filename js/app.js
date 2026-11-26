@@ -10,6 +10,12 @@ const categories=['Infrastrutture e risorse','Ecosistemi e clima','Comunità e d
 DATA.events.forEach((e,i)=>{e.index=i;e.category=e.category||categories[e.y<547?0:e.y<1085?1:2]});
 const ordered=[...DATA.events].sort((a,b)=>a.x-b.x||a.y-b.y);
 function loadImage(src){return new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>reject(new Error('Impossibile leggere una delle immagini incorporate.'));im.src=src})}
+function createBlueGrayscaleImage(bitmap){
+ const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;
+ const imageCtx=canvas.getContext('2d');imageCtx.filter='grayscale(1)';imageCtx.drawImage(bitmap,0,0);imageCtx.filter='none';
+ imageCtx.globalCompositeOperation='source-atop';imageCtx.fillStyle='rgba(20,77,217,.28)';imageCtx.fillRect(0,0,canvas.width,canvas.height);imageCtx.globalCompositeOperation='source-over';
+ return canvas;
+}
 function createPixelEffect(bitmap,eventId){
  const width=18,height=Math.round(width*bitmap.height/bitmap.width),canvas=document.createElement('canvas');
  canvas.width=width;canvas.height=height;
@@ -71,10 +77,12 @@ function groundLabel(label){
  ctx.save();ctx.font=`${label.weight} ${label.size}px monospace`;
  const y=label.bandFrom!==undefined?(label.bandFrom+label.bandTo)/2+ctx.measureText(label.text).width/2:label.y;
  const theta=label.rotation*Math.PI/180,cs=Math.cos(theta),sn=Math.sin(theta),a=project(label.x,y,label.z||0),b=project(label.x+cs,y+sn,label.z||0),d=project(label.x-sn,y+cs,label.z||0);
- ctx.transform(b.x-a.x,b.y-a.y,d.x-a.x,d.y-a.y,a.x,a.y);ctx.fillStyle=label.color||'#ffffff';ctx.textAlign=label.align||'left';ctx.fillText(label.text,0,0);ctx.restore();
+ ctx.transform(b.x-a.x,b.y-a.y,d.x-a.x,d.y-a.y,a.x,a.y);ctx.fillStyle=label.color||'#ffffff';ctx.textAlign=label.align||'left';ctx.fillText(label.text,0,0);
+ if(label.headerImage){const imageWidth=label.headerImageWidth||480,imageHeight=imageWidth*label.headerImage.height/label.headerImage.width,imageX=(ctx.measureText(label.text).width-imageWidth)/2,imageY=-imageHeight-(label.headerImageGap||50);ctx.drawImage(label.headerImage,imageX,imageY,imageWidth,imageHeight)}
+ ctx.restore();
 }
 function layerTextBlock(lines,anchor){
- if(isPlanView()){for(const line of lines)groundLabel(line);return}
+ if(isPlanView()){for(let i=0;i<lines.length;i++)groundLabel(i===0&&anchor.image?{...lines[i],headerImage:anchor.image,headerImageWidth:anchor.imageWidth,headerImageGap:anchor.imageGap}:lines[i]);return}
  layerTextQueue.push({lines:lines.flatMap(l=>l.frontLines?l.frontLines.map(text=>({...l,text})):l),anchor,block:true});
 }
 function renderLayerText(){
@@ -97,14 +105,16 @@ function renderLayerText(){
   }
   const target=project(worldAnchor.x,worldAnchor.y,worldAnchor.z);
   const box={x:target.x-w/2,y:target.y-h/2,w,h};
+  const imageWidth=anchor.image?(anchor.imageWidth||480)*scale:0,imageHeight=anchor.image?imageWidth*anchor.image.height/anchor.image.width:0,imageRect=anchor.image?{x:target.x-imageWidth/2,y:box.y-imageHeight-(anchor.imageGap||50)*scale,w:imageWidth,h:imageHeight}:null;
   layerTextLayout.push({...box,texts:lines.map(l=>l.text),anchor:target,worldAnchor,swatch:anchor.swatch||null});
   // Billboards obey scene depth; exclude only their own supporting plane.
   const inkPadding=Math.max(4,24*scale);
-  const occluders=nearerWallPolygons(target,{left:box.x-inkPadding,top:box.y-inkPadding,right:box.x+w+inkPadding,bottom:box.y+h+inkPadding},worldAnchor.z);
+  const occluders=nearerWallPolygons(target,{left:Math.min(box.x,imageRect?imageRect.x:box.x)-inkPadding,top:(imageRect?imageRect.y:box.y)-inkPadding,right:Math.max(box.x+w,imageRect?imageRect.x+imageRect.w:box.x+w)+inkPadding,bottom:box.y+h+inkPadding},worldAnchor.z);
   for(const polygon of occluders){ctx.beginPath();ctx.rect(0,0,width,height);polygon.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.clip('evenodd')}
   let y=box.y;ctx.textAlign='left';ctx.textBaseline='middle';
   if(anchor.swatch){ctx.fillStyle=anchor.swatch;ctx.fillRect(box.x,box.y+(h-48*scale)/2,48*scale,48*scale)}
   for(const row of rows){ctx.font=`${row.weight} ${row.size*scale}px monospace`;ctx.fillStyle=row.color||(anchor.captionColor||'#ffffff');ctx.fillText(row.text,anchor.centerLines?box.x+swatch+(w-swatch-row.w)/2:box.x+swatch,y+row.h/2);y+=row.h}
+  if(anchor.image)ctx.drawImage(anchor.image,imageRect.x,imageRect.y,imageRect.w,imageRect.h);
   ctx.restore();
  }
 }
@@ -230,7 +240,7 @@ function renderMapLayer(){
   {text:'Cincia alpestre · Finlandia',x:220,y:145,z,rotation:0,size:60,frontSize:44,weight:'700'},
   {text:view.title.replace('ATLANTE ORNITOLOGICO','Atlante ornitologico'),x:220,y:230,z,rotation:0,size:44,weight:'500'},
   {text:'Parus montanus · celle 10 × 10 km',x:220,y:295,z,rotation:0,size:34,frontSize:44,weight:'400'}
- ],{x:125,y:0,z:z+180,rotation:0,centerLines:true,lineHeight:1.05});
+ ],{x:125,y:0,z:z+180,rotation:0,centerLines:true,lineHeight:1.05,image:DATA.maps.birdImage,imageWidth:720,imageGap:50});
  const mapRect=[[480,400],[3680,400],[3680,2232],[480,2232]].map(p=>project(p[0],p[1],z));texture(view.bitmap,mapRect[0],mapRect[1],mapRect[3]);
  path([project(3710,290,z),project(3880,290,z)],'#B7D2FF',null,1.1);path([project(3850,270,z),project(3880,290,z),project(3850,310,z)],'#B7D2FF',null,1.1);groundLabel({text:'N',x:3915,y:302,z,rotation:0,size:36,weight:'700'});
  const names=['Confermata','Probabile','Possibile'];for(let i=0;i<3;i++){const x=250+i*1050;if(isPlanView())path([[x,2310],[x+48,2310],[x+48,2358],[x,2358]].map(p=>project(p[0],p[1],z)),null,DATA.maps.colors[i]);groundLabel({text:names[i]+' · '+view.counts[i],x:x+75,y:2350,z,rotation:0,size:40,weight:'500',swatch:DATA.maps.colors[i]})}
@@ -416,4 +426,4 @@ function endPointer(e,cancel=false){const click=!cancel&&drag&&!drag.moved&&poin
 canvas.addEventListener('pointerup',e=>endPointer(e));canvas.addEventListener('pointercancel',e=>endPointer(e,true));canvas.addEventListener('pointerleave',hideTip);canvas.addEventListener('contextmenu',e=>e.preventDefault());canvas.addEventListener('wheel',e=>{e.preventDefault();zoom(Math.exp(-e.deltaY*.001))},{passive:false});
 canvas.addEventListener('keydown',e=>{if(e.key==='ArrowLeft')camera.angle-=.12;else if(e.key==='ArrowRight')camera.angle+=.12;else if(e.key==='ArrowUp')camera.elevation=Math.min(Math.PI/2,camera.elevation+.08);else if(e.key==='ArrowDown')camera.elevation=Math.max(.12,camera.elevation-.08);else if(e.key==='+'||e.key==='=')zoom(1.2);else if(e.key==='-')zoom(1/1.2);else if(e.key==='Home')reset();else return;e.preventDefault();fit();dirty=true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDetail();closeViewMenu();hideTip()}});window.addEventListener('resize',resize);
-(async()=>{try{if(document.fonts){await document.fonts.load('400 20px Inter');await document.fonts.load('800 48px Inter')}DATA.groundImage=await loadImage(DATA.ground);await Promise.all([...DATA.events.filter(e=>e.image),...DATA.maps.views,...DATA.imaginary.events].map(async e=>{e.bitmap=await loadImage(e.image)}));for(const e of DATA.imaginary.events)if(e.image)imaginationPixelEffects.set(e.id,createPixelEffect(e.bitmap,e.id));ready=true;syncMapControls();resize();$('loading').hidden=true;loop()}catch(e){$('loading').textContent=e.message}})();
+(async()=>{try{if(document.fonts){await document.fonts.load('400 20px Inter');await document.fonts.load('800 48px Inter')}const [groundImage,birdPhoto]=await Promise.all([loadImage(DATA.ground),loadImage('assets/images/cincia-alpestre.png')]);DATA.groundImage=groundImage;DATA.maps.birdImage=createBlueGrayscaleImage(birdPhoto);await Promise.all([...DATA.events.filter(e=>e.image),...DATA.maps.views,...DATA.imaginary.events].map(async e=>{e.bitmap=await loadImage(e.image)}));for(const e of DATA.imaginary.events)if(e.image)imaginationPixelEffects.set(e.id,createPixelEffect(e.bitmap,e.id));ready=true;syncMapControls();resize();$('loading').hidden=true;loop()}catch(e){$('loading').textContent=e.message}})();
