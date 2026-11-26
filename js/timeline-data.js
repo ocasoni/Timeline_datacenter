@@ -11233,6 +11233,7 @@ window.TIMELINE_DATA = {
         "yearEnd": 1996,
         "aspect": 0.8323353293413174,
         "image": "assets/images/imagination-1996-image.webp",
+        "wallQuote": "\"Cyberspace does not lie within your borders.\" (John Perry Barlow)",
         "imageCount": 1,
         "w": 420,
         "h": 504.60431654676256,
@@ -11253,6 +11254,11 @@ window.TIMELINE_DATA = {
         "yearEnd": 2026,
         "aspect": 0.6732673267326733,
         "image": "assets/images/imagination-2026-image.webp",
+        "wallQuote": "\"Americans' views of data centers have turned more negative\" (Pew)",
+        "wallQuoteLayout": {
+          "width": 1200,
+          "height": 320
+        },
         "imageCount": 1,
         "w": 420,
         "h": 623.8235294117646,
@@ -11313,6 +11319,25 @@ window.TIMELINE_DATA = {
         "yearEnd": 2018,
         "aspect": 1.6069651741293531,
         "image": "assets/images/imagination-2018-image.webp",
+        "wallQuote": "\"The cloud is not weightless\" (James Bridle, New Dark Age).",
+        "wallQuoteLayout": {
+          "width": 900,
+          "height": 320
+        },
+        "wallSplit": {
+          "imageCrop": {
+            "x": 0,
+            "y": 228,
+            "width": 562,
+            "height": 375
+          },
+          "quoteCrop": {
+            "x": 592,
+            "y": 0,
+            "width": 377,
+            "height": 603
+          }
+        },
         "imageCount": 2,
         "w": 600,
         "h": 373.374613003096,
@@ -11385,6 +11410,7 @@ window.TIMELINE_DATA = {
         "yearEnd": 2014,
         "aspect": 1.775,
         "image": "assets/images/imagination-2014-image.webp",
+        "wallQuote": "\"look beyond the childish myth of 'the cloud'\" (Timo Arnall)",
         "imageCount": 1,
         "w": 420,
         "h": 236.61971830985917,
