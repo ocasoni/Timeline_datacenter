@@ -2222,12 +2222,6 @@ window.TIMELINE_DATA = {
     "width": 1320,
     "height": 756,
     "description": "La cincia alpestre, uno degli uccelli più caratteristici delle foreste finlandesi, ha subito un drastico calo negli ultimi anni. A metà del XX secolo, la cincia alpestre era ancora tra le cinque specie di uccelli più abbondanti in Finlandia. Oggi è classificata come specie in pericolo di estinzione in Finlandia a causa del significativo declino avvenuto negli anni 2000.\n\nL'aumento della mortalità invernale è considerato una delle principali cause del declino della cincia alpestre. Per il suo territorio invernale, la specie necessita di foreste mature e grandi alberi che sono diminuiti a causa della silvicoltura. In estate, il successo riproduttivo dell'uccello potrebbe essere stato influenzato dalla diminuzione della vegetazione del sottobosco dominata da alberi decidui, importanti per l'alimentazione, e dalla perdita di legno morto adatto alla nidificazione.",
-    "links": [
-      {
-        "label": "The_state_of_the_birds_in_Finland.pdf",
-        "href": "https://storage.googleapis.com/tiedostot-birdlife-fi/julkaisut/The_state_of_the_birds_in_Finland.pdf?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=371242900387-compute%40developer.gserviceaccount.com%2F20261122%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20261122T095932Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&response-content-disposition=inline%3B%20filename%3D%22The_state_of_the_birds_in_Finland.pdf%22&X-Goog-Signature=8190a7aea12e89c08901b3029624428b61c23c7a3f96e17781fa5a1e29c25ca98cfaaeff6da2bacbf2b8709f1572410bb1eebe48ce15ffa23ac9082a63354accc6609a2e7d322262d679d96d93d7bfc0a6872c1c23cf2969bba954605326811e864af78a24e2182376b8b9f1040a1633a4ff9b4f9eff19f42e83beed92571eb47183735bf49e83badba04c6f683df2ca80b9d0bfe87449d1bcd43c720af17c730bd49feae122ac42d825b641a7a590aef3232861f6ffabb8207c74509b0ea8d5d8c067683f82df7656139d7484cdfadb662493c1c859c541a67b2f803f41a1d44d614118df9ef4ddab154033b38e3c97a425d1ccc6880c6e8cf597c5976bafe3"
-      }
-    ]
   },
   "datacenters": {
     "title": "Data center censiti e in programma in Finlandia",
@@ -11223,9 +11217,9 @@ window.TIMELINE_DATA = {
         "w": 420,
         "h": 334.5348837209302,
         "x": 438.4,
-        "y": -650,
-        "row": 0,
-        "z": -1120
+        "y": 650,
+        "row": 2,
+        "z": 950
       },
       {
         "id": "imagination-1996",
@@ -11243,9 +11237,9 @@ window.TIMELINE_DATA = {
         "w": 420,
         "h": 504.60431654676256,
         "x": 2153.6,
-        "y": -650,
+        "y": 0,
         "row": 1,
-        "z": -1340
+        "z": 950
       },
       {
         "id": "imagination-2026",
@@ -11264,8 +11258,8 @@ window.TIMELINE_DATA = {
         "h": 623.8235294117646,
         "x": 3976.0,
         "y": -650,
-        "row": 2,
-        "z": -1560
+        "row": 0,
+        "z": 950
       },
       {
         "id": "imagination-2010",
@@ -11285,7 +11279,7 @@ window.TIMELINE_DATA = {
         "x": 2930.8,
         "y": -650,
         "row": 0,
-        "z": -1120
+        "z": 950
       },
       {
         "id": "imagination-2012",
@@ -11303,9 +11297,9 @@ window.TIMELINE_DATA = {
         "w": 420,
         "h": 280.7486631016043,
         "x": 3011.2,
-        "y": -650,
+        "y": 0,
         "row": 1,
-        "z": -1340
+        "z": 950
       },
       {
         "id": "imagination-2018",
@@ -11323,9 +11317,9 @@ window.TIMELINE_DATA = {
         "w": 600,
         "h": 373.374613003096,
         "x": 3332.8,
-        "y": -650,
-        "row": 1,
-        "z": -1340
+        "y": 2600,
+        "row": 5,
+        "z": 950
       },
       {
         "id": "imagination-2013",
@@ -11343,9 +11337,9 @@ window.TIMELINE_DATA = {
         "w": 420,
         "h": 336.0,
         "x": 3064.8,
-        "y": -650,
+        "y": 650,
         "row": 2,
-        "z": -1560,
+        "z": 950,
         "links": [
           {
             "label": "Fragments on Machines — Emma Charles (Vimeo)",
@@ -11369,9 +11363,9 @@ window.TIMELINE_DATA = {
         "w": 420,
         "h": 275.09999999999997,
         "x": 3172.0,
-        "y": -650,
-        "row": 0,
-        "z": -1120,
+        "y": 1950,
+        "row": 4,
+        "z": 950,
         "links": [
           {
             "label": "Trevor Paglen's Deep Web Dive | Behind the Scenes",
@@ -11395,9 +11389,9 @@ window.TIMELINE_DATA = {
         "w": 420,
         "h": 236.61971830985917,
         "x": 3118.4,
-        "y": -650,
+        "y": 1300,
         "row": 3,
-        "z": -1780,
+        "z": 950,
         "links": [
           {
             "label": "Internet Machine — Timo Arnall (Vimeo)",
@@ -11408,7 +11402,7 @@ window.TIMELINE_DATA = {
     ],
     "imageCount": 10,
     "backY": -90,
-    "rows": 4,
+    "rows": 6,
     "source": "immaginario.svg",
     "yearAnchors": [
       {

@@ -3,7 +3,7 @@
 // Orthographic camera; x = chronology, y = categories, z = vertical images.
 const DATA=window.TIMELINE_DATA;
 const $=id=>document.getElementById(id),canvas=$('scene');let ctx=canvas.getContext('2d');const baseCtx=ctx,foregroundCanvas=$('foregroundScene'),foregroundCtx=foregroundCanvas.getContext('2d');
-const defaultCamera=()=>({angle:Math.PI/4.5,elevation:Math.PI/15,zoom:1.2,panX:90,panY:-55});
+const defaultCamera=()=>({angle:Math.PI/4.5,elevation:Math.PI/15,zoom:1.1,panX:90,panY:30});
 const camera=defaultCamera();
 let width=innerWidth,height=innerHeight,scale=1,selected=null,hover=null,hits=[],moveMode=false,dirty=true,ready=false;
 const categories=['Infrastrutture e risorse','Ecosistemi e clima','Comunità e decisioni'];
