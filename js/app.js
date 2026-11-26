@@ -27,7 +27,7 @@ let layerTextQueue=[],layerTextLayout=[];
 function isPlanView(){return Math.abs(camera.elevation-Math.PI/2)<1e-6}
 function groundLabel(label){
  if(!isPlanView()){layerTextQueue.push({lines:[label],anchor:label});return}
- ctx.save();ctx.font=`${label.weight} ${label.size}px Inter`;
+ ctx.save();ctx.font=`${label.weight} ${label.size}px monospace`;
  const y=label.bandFrom!==undefined?(label.bandFrom+label.bandTo)/2+ctx.measureText(label.text).width/2:label.y;
  const theta=label.rotation*Math.PI/180,cs=Math.cos(theta),sn=Math.sin(theta),a=project(label.x,y,label.z||0),b=project(label.x+cs,y+sn,label.z||0),d=project(label.x-sn,y+cs,label.z||0);
  ctx.transform(b.x-a.x,b.y-a.y,d.x-a.x,d.y-a.y,a.x,a.y);ctx.fillStyle=label.color||'#ffffff';ctx.textAlign=label.align||'left';ctx.fillText(label.text,0,0);ctx.restore();
@@ -41,7 +41,7 @@ function renderLayerText(){
  if(isPlanView())return;
  for(const item of layerTextQueue){
   const {lines,anchor}=item;ctx.save();
-  const rows=lines.map(l=>{const size=l.frontSize||l.size;ctx.font=`${l.weight} ${size}px Inter`;return {...l,size,w:ctx.measureText(l.text).width*scale,h:size*(anchor.lineHeight||1.3)*scale}});
+  const rows=lines.map(l=>{const size=l.frontSize||l.size;ctx.font=`${l.weight} ${size}px monospace`;return {...l,size,w:ctx.measureText(l.text).width*scale,h:size*(anchor.lineHeight||1.3)*scale}});
   const swatch=anchor.swatch?75*scale:0,w=Math.max(...rows.map(l=>l.w))+swatch,h=rows.reduce((sum,l)=>sum+l.h,0);
   // A fixed world-space pivot, independent of camera, other labels and viewport.
   let worldAnchor;
@@ -49,7 +49,7 @@ function renderLayerText(){
    const y=anchor.bandFrom!==undefined?(anchor.bandFrom+anchor.bandTo)/2:anchor.y;
    worldAnchor={x:anchor.x,y,z:anchor.z||0};
   }else{
-   ctx.font=`${anchor.weight} ${anchor.size}px Inter`;ctx.textAlign=anchor.align||'left';
+   ctx.font=`${anchor.weight} ${anchor.size}px monospace`;ctx.textAlign=anchor.align||'left';
    const m=ctx.measureText(anchor.text),cx=(m.actualBoundingBoxRight-m.actualBoundingBoxLeft)/2,cy=(m.actualBoundingBoxDescent-m.actualBoundingBoxAscent)/2;
    const y=anchor.bandFrom!==undefined?(anchor.bandFrom+anchor.bandTo)/2+m.width/2:anchor.y,t=anchor.rotation*Math.PI/180;
    worldAnchor={x:anchor.x+Math.cos(t)*cx-Math.sin(t)*cy,y:y+Math.sin(t)*cx+Math.cos(t)*cy,z:anchor.z||0};
@@ -63,7 +63,7 @@ function renderLayerText(){
   for(const polygon of occluders){ctx.beginPath();ctx.rect(0,0,width,height);polygon.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.clip('evenodd')}
   let y=box.y;ctx.textAlign='left';ctx.textBaseline='middle';
   if(anchor.swatch){ctx.fillStyle=anchor.swatch;ctx.fillRect(box.x,box.y+(h-48*scale)/2,48*scale,48*scale)}
-  for(const row of rows){ctx.font=`${row.weight} ${row.size*scale}px Inter`;ctx.fillStyle=row.color||(anchor.captionColor||'#ffffff');ctx.fillText(row.text,anchor.centerLines?box.x+swatch+(w-swatch-row.w)/2:box.x+swatch,y+row.h/2);y+=row.h}
+  for(const row of rows){ctx.font=`${row.weight} ${row.size*scale}px monospace`;ctx.fillStyle=row.color||(anchor.captionColor||'#ffffff');ctx.fillText(row.text,anchor.centerLines?box.x+swatch+(w-swatch-row.w)/2:box.x+swatch,y+row.h/2);y+=row.h}
   ctx.restore();
  }
 }
@@ -236,9 +236,9 @@ function renderCrossLayerWires(pass){
 let macroBlockTitleState=[];
 function renderMacroBlockTitles(){
  const imaginationZ=DATA.imaginary.events.reduce((sum,event)=>sum+event.z,0)/DATA.imaginary.events.length;
- const groups=[{text:'Eventi',z:0},{text:'Immaginario',z:imaginationZ},{text:'Dati e indicatori',z:(DATA.co2.z+DATA.energy.z+DATA.population.z)/3},{text:'Non - Humans',z:(DATA.maps.z+DATA.datacenters.z)/2}];
+ const groups=[{text:'Eventi',z:0},{text:'Immaginario',z:imaginationZ},{text:'Dati e indicatori',z:(DATA.co2.z+DATA.energy.z+DATA.population.z)/3},{text:'Non-Humans',z:(DATA.maps.z+DATA.datacenters.z)/2}];
  const opacity=1-overheadBlend(),fontSize=Math.min(52,Math.max(20,220*scale));
- ctx.save();ctx.font=`600 ${fontSize}px Inter`;ctx.textAlign='left';ctx.textBaseline='middle';ctx.globalAlpha=opacity;ctx.fillStyle='#999DA7';ctx.shadowColor='#17181bcc';ctx.shadowBlur=7;ctx.shadowOffsetY=1;
+ ctx.save();ctx.font=`600 ${fontSize}px monospace`;ctx.textAlign='left';ctx.textBaseline='middle';ctx.globalAlpha=opacity;ctx.fillStyle='#999DA7';ctx.shadowColor='#17181bcc';ctx.shadowBlur=7;ctx.shadowOffsetY=1;
  const labelWidth=Math.max(...groups.map(g=>ctx.measureText(g.text).width)),distance=labelWidth/scale+600;
  // A billboard extends to the left of a fixed layer corner, along the camera's horizontal axis.
  // Its world height matches the layer, so the title cannot drift vertically when rotating.
@@ -292,7 +292,7 @@ function render(){if(!ready)return;layerTextQueue=[];ctx=baseCtx;foregroundCtx.c
  }
  for(const card of cards){const {e,poly,w,h}=card,[a,b,c,d]=poly;
   if(e.image){texture(e.bitmap,a,b,d);path(poly,null,'rgba(20,77,217,.28)')}
-  else{path(poly,null,'#303a53');ctx.save();ctx.translate(a.x,a.y);ctx.scale(scale,scale);ctx.fillStyle='#fff';ctx.font='20px Inter';ctx.textBaseline='middle';const lines=titleLines(e.title,w-22);const lh=Math.min(22,(h-16)/lines.length);lines.forEach((line,i)=>ctx.fillText(line,11,h/2+(i-(lines.length-1)/2)*lh));ctx.restore()}
+  else{path(poly,null,'#303a53');ctx.save();ctx.translate(a.x,a.y);ctx.scale(scale,scale);ctx.fillStyle='#fff';ctx.font='20px monospace';ctx.textBaseline='middle';const lines=titleLines(e.title,w-22);const lh=Math.min(22,(h-16)/lines.length);lines.forEach((line,i)=>ctx.fillText(line,11,h/2+(i-(lines.length-1)/2)*lh));ctx.restore()}
   path(poly,isHighlighted(e)?'#ff6b6b':hover===e?'#79a1ff':'#2463FF',null,isHighlighted(e)?2.5:1);hits.push({e,poly});
  }
  const anchors=[];
